@@ -1,1 +1,10 @@
 project_id = "paobvynppkpqfvrhtxcq"
+
+[functions.ocr]
+verify_jwt = false
+
+[functions.translate]
+verify_jwt = false
+
+[functions.rag-qa]
+verify_jwt = false

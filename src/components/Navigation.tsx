@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Languages, ScanText, Brain, Home } from "lucide-react";
+import { Languages, ScanText, Brain, Home, History } from "lucide-react";
 
 const Navigation = () => {
   const location = useLocation();
@@ -59,6 +59,16 @@ const Navigation = () => {
               >
                 <Brain className="w-4 h-4" />
                 <span className="hidden sm:inline">Q&A</span>
+              </Button>
+            </Link>
+            <Link to="/history">
+              <Button 
+                variant={isActive("/history") ? "default" : "ghost"}
+                size="sm"
+                className="gap-2"
+              >
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline">History</span>
               </Button>
             </Link>
           </div>

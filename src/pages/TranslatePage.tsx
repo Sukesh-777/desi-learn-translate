@@ -39,15 +39,44 @@ const TranslatePage = () => {
 
     setIsLoading(true);
     
-    // Simulate translation
-    setTimeout(() => {
-      setTranslatedText("Translated text will appear here. Connect to Lovable Cloud to enable real translation using AI models.");
-      setIsLoading(false);
+    try {
+      const sourceLanguage = languages.find(l => l.code === sourceLang)?.name || "English";
+      const targetLanguage = languages.find(l => l.code === targetLang)?.name || "Hindi";
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: sourceText,
+          sourceLanguage,
+          targetLanguage,
+          userId: null,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Translation failed');
+      }
+
+      const data = await response.json();
+      setTranslatedText(data.translatedText);
       toast({
         title: "Translation complete",
         description: "Your text has been translated"
       });
-    }, 1500);
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast({
+        title: "Translation failed",
+        description: error instanceof Error ? error.message : "Failed to translate text",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = () => {

@@ -14,24 +14,61 @@ interface Message {
 
 const QnAPage = () => {
   const [document, setDocument] = useState<File | null>(null);
+  const [documentText, setDocumentText] = useState<string>("");
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingDoc, setIsProcessingDoc] = useState(false);
   const { toast } = useToast();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setDocument(file);
-      toast({
-        title: "Document uploaded",
-        description: `${file.name} is ready for questions`
-      });
+      setIsProcessingDoc(true);
+      
+      try {
+        // Extract text from document using OCR
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Image = reader.result as string;
+          
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageBase64: base64Image }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to process document');
+          }
+
+          const data = await response.json();
+          setDocumentText(data.text);
+          toast({
+            title: "Document processed",
+            description: `${file.name} is ready for questions`
+          });
+          setIsProcessingDoc(false);
+        };
+        
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Document processing error:', error);
+        toast({
+          title: "Processing failed",
+          description: "Failed to process document",
+          variant: "destructive"
+        });
+        setIsProcessingDoc(false);
+      }
     }
   };
 
   const handleAskQuestion = async () => {
-    if (!document) {
+    if (!document || !documentText) {
       toast({
         title: "No document uploaded",
         description: "Please upload a document first",
@@ -54,15 +91,41 @@ const QnAPage = () => {
     setQuestion("");
     setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rag-qa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: userMessage.content,
+          documentText,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get answer');
+      }
+
+      const data = await response.json();
       const assistantMessage: Message = {
         role: "assistant",
-        content: "This is a sample answer. Connect to Lovable Cloud to enable real document Q&A using RAG (Retrieval Augmented Generation)."
+        content: data.answer
       };
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Q&A error:', error);
+      toast({
+        title: "Failed to get answer",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+      // Remove the user message if the request failed
+      setMessages(prev => prev.slice(0, -1));
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -95,21 +158,30 @@ const QnAPage = () => {
                 <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
                   <input
                     type="file"
-                    accept=".pdf,.txt,.doc,.docx"
+                    accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg"
                     onChange={handleFileChange}
                     className="hidden"
                     id="doc-upload"
+                    disabled={isProcessingDoc}
                   />
                   <label 
                     htmlFor="doc-upload"
                     className="cursor-pointer flex flex-col items-center gap-2"
                   >
-                    <FileText className="w-10 h-10 text-muted-foreground" />
+                    {isProcessingDoc ? (
+                      <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                    ) : (
+                      <FileText className="w-10 h-10 text-muted-foreground" />
+                    )}
                     <span className="text-sm text-muted-foreground">
-                      {document ? document.name : "Click to upload document"}
+                      {isProcessingDoc 
+                        ? "Processing document..." 
+                        : document 
+                          ? document.name 
+                          : "Click to upload document"}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      PDF, TXT, DOC, DOCX up to 10MB
+                      PDF, images, DOC, DOCX up to 10MB
                     </span>
                   </label>
                 </div>

@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import OCRPage from "./pages/OCRPage";
 import TranslatePage from "./pages/TranslatePage";
 import QnAPage from "./pages/QnAPage";
+import TranslationHistory from "./pages/TranslationHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/ocr" element={<OCRPage />} />
           <Route path="/translate" element={<TranslatePage />} />
           <Route path="/qna" element={<QnAPage />} />
+          <Route path="/history" element={<TranslationHistory />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

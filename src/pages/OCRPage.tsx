@@ -32,15 +32,43 @@ const OCRPage = () => {
 
     setIsLoading(true);
     
-    // Simulate OCR processing
-    setTimeout(() => {
-      setExtractedText("Sample extracted text will appear here. Connect to Lovable Cloud to enable real OCR functionality using Hugging Face models.");
-      setIsLoading(false);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Image = reader.result as string;
+        
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ imageBase64: base64Image }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'OCR failed');
+        }
+
+        const data = await response.json();
+        setExtractedText(data.text);
+        toast({
+          title: "Text extracted successfully",
+          description: "Your document has been processed"
+        });
+        setIsLoading(false);
+      };
+      
+      reader.readAsDataURL(selectedFile);
+    } catch (error) {
+      console.error('OCR error:', error);
       toast({
-        title: "Text extracted successfully",
-        description: "Your document has been processed"
+        title: "Extraction failed",
+        description: error instanceof Error ? error.message : "Failed to extract text",
+        variant: "destructive"
       });
-    }, 2000);
+      setIsLoading(false);
+    }
   };
 
   return (
