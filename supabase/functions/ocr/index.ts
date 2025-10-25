@@ -1,18 +1,21 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// The 'serve' import is no longer needed because this is not a standalone server.
+// import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+// We've changed 'serve(async (req) => {' to 'export const handleRequest = ...'
+// This makes the logic reusable so our new server can call it.
+export const handleRequest = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { imageBase64 } = await req.json();
-    
+
     if (!imageBase64) {
       return new Response(
         JSON.stringify({ error: 'No image provided' }),
@@ -62,7 +65,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
@@ -75,7 +78,7 @@ serve(async (req) => {
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
+
       return new Response(
         JSON.stringify({ error: 'Failed to process image' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -98,4 +101,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}; // The closing bracket is now for 'handleRequest', not 'serve'
